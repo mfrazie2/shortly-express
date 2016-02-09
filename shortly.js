@@ -117,7 +117,7 @@ app.post("/signup", function(req, res) {
 
       user.save().then(function(newUser) {
         Users.add(newUser);
-        res.send(200, newUser);
+        res.render('login');
       });
     }
   });
@@ -125,7 +125,23 @@ app.post("/signup", function(req, res) {
 
 app.post("/login", function(req, res) {
   // get username/password from page
+  var username = req.body.username;
+  var password = req.body.username;
+  // username exist?
+    // check password against hash
   // check agains db
+  new User({ username: username }).fetch().then(function(found) {
+    if (found) {
+      if (found.comparePassword(password)) {
+        res.render('index');
+      }
+
+
+    } else {
+      res.render('login');
+    }
+  });
+
 });
 
 /************************************************************/

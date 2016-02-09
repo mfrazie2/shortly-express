@@ -7,3 +7,6 @@ node_modules
 .floobit
 .floo
 .flooignore
+
+# Visual Studio Code
+.vscode

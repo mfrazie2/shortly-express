@@ -19,7 +19,12 @@ var User = db.Model.extend({
     //     });
     //   });
     // });
-  )}
+  )},
+
+  comparePassword: function(pw) {
+    var hash = this.get('password');
+    return bcrypt.compareSync(pw, hash);
+  }
 });
 
 module.exports = User;
