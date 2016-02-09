@@ -2,7 +2,7 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
-
+var session = require('express-session');
 
 var db = require('./app/config');
 var Users = require('./app/collections/users');
@@ -22,25 +22,32 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
+// Express session
+app.use(session({
+  genid: function(req) {
+    return 1;
+  },
+  secret: 'ILLINI'
+}));
 
-app.get('/', 
+app.get('/', restrict,
 function(req, res) {
   res.render('index');
 });
 
-app.get('/create', 
+app.get('/create', restrict,
 function(req, res) {
   res.render('index');
 });
 
-app.get('/links', 
+app.get('/links', restrict,
 function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
   });
 });
 
-app.post('/links', 
+app.post('/links',
 function(req, res) {
   var uri = req.body.url;
 
@@ -77,8 +84,49 @@ function(req, res) {
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
+function restrict(req, res, next) {
+  if(req.session.user) {
+    next();
+  } else {
+    req.session.error = "Access Denied!";
+    res.redirect("/login");
+  }
+}
 
+app.get("/login", function(req, res) {
+  res.render('login');
+});
 
+app.get("/signup", function(req, res) {
+  res.render('signup');
+});
+
+app.post("/signup", function(req, res) {
+  var username = req.body.username;
+  var password = req.body.username;
+
+  new User({ username: username }).fetch().then(function(found) {
+    if (found) {
+      // To Do : Username already picked
+      //res.send(200, found.attributes);
+    } else {
+      var user = new User({
+        username: username,
+        password: password
+      });
+
+      user.save().then(function(newUser) {
+        Users.add(newUser);
+        res.send(200, newUser);
+      });
+    }
+  });
+});
+
+app.post("/login", function(req, res) {
+  // get username/password from page
+  // check agains db
+});
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
