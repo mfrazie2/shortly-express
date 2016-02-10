@@ -51,7 +51,8 @@ app.get('/create',
 function(req, res) {
   req.session.reload(function(err) {
     if(req.session.isValid === true) {
-      res.render('create');
+      res.render('index');
+      // res.end();
     } else {
       res.redirect('login');
     }
