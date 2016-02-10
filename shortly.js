@@ -31,41 +31,55 @@ app.use(session({
   secret: 'ILLINI'
 }));
 
-var sess;
 
 app.get('/',
 function(req, res) {
-  restrict(req, res, function(res) {
-    res.render('index');
+  req.session.reload(function(err) {
+    if(req.session.isValid === true) {
+      res.render('index');
+    } else {
+      res.redirect('login')
+    }
   });
-  // sess = req.session;
+  // restrict(req, res, function(res) {
+  //   res.render('index');
+  // });
+  // // sess = req.session;
 });
 
 app.get('/create',
 function(req, res) {
-  restrict(req, res, function(res) {
-    res.render('create');
+  req.session.reload(function(err) {
+    if(req.session.isValid === true) {
+      res.render('create');
+    } else {
+      res.redirect('login');
+    }
   });
+  // restrict(req, res, function(res) {
+  //   res.render('create');
+  // });
   // sess = req.session;
   // res.render('create');
 });
 
 app.get('/links',
 function(req, res) {
-  restrict(req, res, function(res) {
-    sess = req.session;
-    console.log('session ' + req.session);
-    Links.reset().fetch().then(function(links) {
+  req.session.reload(function(err) {
+    if(req.session.isValid === true) {
+      Links.reset().fetch().then(function(links) {
       res.send(200, links.models);
     });
+    } else {
+      res.redirect('login')
+    }
   });
+
+
 });
 
 app.post('/links',
 function(req, res) {
-  // sess = req.session;
-
-
   var uri = req.body.url;
 
   if (!util.isValidUrl(uri)) {
@@ -101,23 +115,14 @@ function(req, res) {
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
-function restrict(req, res, callback) {
-  // sess.username = req.body.username;
-  // sess.whatever = 'what?';
-  // console.log('Check restrict');
-  // console.log('session ' + req.session.id);
-  // console.log('session ' + req);
-  // console.log(util2.inspect(sess, false, null));
-  // console.log('req.body ' + util2.inspect(req.body, false, null));
-  // console.log(sess.username);
-  // console.log(req.body.username);
-  if(sess && sess.username && sess.username === req.body.username) {
-    callback(res);
-  } else {
-    req.session.error = "Access Denied!";
-    res.redirect("/login");
-  }
-}
+// function restrict(req, res, callback) {
+//   if(sess && sess.username && sess.username === req.body.username) {
+//     callback(res);
+//   } else {
+//     req.session.error = "Access Denied!";
+//     res.redirect("/login");
+//   }
+// }
 
 app.get("/login", function(req, res) {
   // sess = req.session;
@@ -130,8 +135,13 @@ app.get("/signup", function(req, res) {
   res.render('signup');
 });
 
+app.get('/logout', function(req, res) {
+  req.session.destroy(function(err){
+    res.redirect('/login');
+  });
+});
+
 app.post("/signup", function(req, res) {
-  // sess = req.session;
   var username = req.body.username;
   var password = req.body.password;
 
@@ -158,15 +168,17 @@ app.post("/login", function(req, res) {
   // get username/password from page
   var username = req.body.username;
   var password = req.body.password;
-  console.log('--->' + util2.inspect(sess, false, null));
   // username exist?
     // check password against hash
   // check agains db
   new User({ username: username }).fetch().then(function(found) {
     if (found) {
       if (found.comparePassword(password)) {
+        req.session.regenerate(function() {
+          req.session.isValid = true;
+          req.session.save(function(err) {});
+        });
         res.redirect('/');
-        sess.username = username;
       }
     } else {
       res.redirect('/login');
@@ -183,26 +195,37 @@ app.post("/login", function(req, res) {
 
 app.get('/*', function(req, res) {
   // sess = req.session;
+  req.session.reload(function(err) {
+    if(req.session.isValid === true) {
 
-  new Link({ code: req.params[0] }).fetch().then(function(link) {
-    if (!link) {
-      res.redirect('/');
-    } else {
-      var click = new Click({
-        link_id: link.get('id')
-      });
 
-      click.save().then(function() {
-        db.knex('urls')
-          .where('code', '=', link.get('code'))
-          .update({
-            visits: link.get('visits') + 1,
-          }).then(function() {
-            return res.redirect(link.get('url'));
-          });
-      });
-    }
-  });
+
+    new Link({ code: req.params[0] }).fetch().then(function(link) {
+      if (!link) {
+        res.redirect('/');
+      } else {
+        var click = new Click({
+          link_id: link.get('id')
+        });
+
+        click.save().then(function() {
+          db.knex('urls')
+            .where('code', '=', link.get('code'))
+            .update({
+              visits: link.get('visits') + 1
+            }).then(function() {
+              return res.redirect(link.get('url'));
+            });
+        });
+      }
+    });
+
+
+
+  } else {
+    res.redirect('/login');
+  }
+});
 });
 
 console.log('Shortly is listening on 4568');
